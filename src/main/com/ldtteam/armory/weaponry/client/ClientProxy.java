@@ -1,4 +1,4 @@
-package com.Orion.Armory.Weaponry.Client;
+package com.ldtteam.armory.weaponry.client;
 
 import com.Orion.Armory.Weaponry.Client.Compatibility.ClientArmoryCompatEventHandler;
 import com.Orion.Armory.Weaponry.Common.CommonProxy;

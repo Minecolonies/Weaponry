@@ -1,21 +1,21 @@
-package com.Orion.Armory.Weaponry;
+package com.ldtteam.armory.weaponry;
 
-import com.Orion.Armory.Weaponry.Common.CommonProxy;
-import com.Orion.Armory.Weaponry.Common.Config.ConfigurationHandler;
-import com.Orion.Armory.Weaponry.Util.References;
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.SidedProxy;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import com.ldtteam.armory.weaponry.common.CommonProxy;
+import com.ldtteam.armory.weaponry.common.config.ConfigurationHandler;
+import com.ldtteam.armory.weaponry.util.References;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.SidedProxy;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
 /**
  * Created by Orion
  * Created on 01.06.2015
  * 10:52
- * <p/>
+ *
  * Copyrighted according to Project specific license
  */
 @Mod(modid = References.General.MOD_ID, name = "Armory-Weaponry", version = References.General.VERSION,
-        dependencies = "required-after:Forge@[10.13,);required-after:Mantle;after:ForgeMultipart;required-after:TConstruct;required-after:Armory@[1.1,);after:Armory-World")
+        dependencies = "required-after:forge;required-after:mantle;;required-after:tconstruct;required-after:armory;after:armory-world")
 public class Weaponry
 {
     // Instance of this mod use for internal and Forge references

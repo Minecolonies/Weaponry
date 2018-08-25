@@ -1,4 +1,4 @@
-package com.Orion.Armory.Weaponry.Common.Config;
+package com.ldtteam.armory.weaponry.common.config;
 
 /**
  * Created by Marc on 6-6-2015.

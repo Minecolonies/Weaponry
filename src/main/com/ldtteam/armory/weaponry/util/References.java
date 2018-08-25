@@ -1,6 +1,4 @@
-package com.Orion.Armory.Weaponry.Util;
-
-import cpw.mods.fml.client.registry.RenderingRegistry;
+package com.ldtteam.armory.weaponry.util;
 
 /**
  * Created by Orion
@@ -12,7 +10,7 @@ import cpw.mods.fml.client.registry.RenderingRegistry;
 public class References {
 
     public class General {
-        public static final String MOD_ID = "Armory-Weaponry";
+        public static final String MOD_ID = "armory-weaponry";
         public static final String VERSION = "@VERSION@";
         public static final String MC_VERSION = "@MCVERSION";
     }

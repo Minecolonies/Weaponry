@@ -1,4 +1,4 @@
-package com.Orion.Armory.Weaponry.Client.Compatibility;
+package com.ldtteam.armory.weaponry.client.compatibility;
 
 import com.SmithsModding.Armory.API.Events.Client.RegisterItemResourcesEvent;
 import com.SmithsModding.Armory.API.Events.Client.RegisterMaterialResourceEvent;

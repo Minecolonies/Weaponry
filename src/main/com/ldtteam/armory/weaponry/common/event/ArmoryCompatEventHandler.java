@@ -1,4 +1,4 @@
-package com.Orion.Armory.Weaponry.Event;
+package com.ldtteam.armory.weaponry.common.event;
 
 import com.SmithsModding.Armory.API.Events.Common.ActivateArmorAddonEvent;
 import com.SmithsModding.Armory.API.Events.Common.ModifyMaterialEvent;

@@ -1,4 +1,4 @@
-package com.Orion.Armory.Weaponry.Common;
+package com.ldtteam.armory.weaponry.common;
 
 import com.Orion.Armory.Weaponry.Event.ArmoryCompatEventHandler;
 import net.minecraftforge.common.MinecraftForge;

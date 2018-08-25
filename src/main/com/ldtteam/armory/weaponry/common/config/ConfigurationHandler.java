@@ -1,4 +1,4 @@
-package com.Orion.Armory.Weaponry.Common.Config;
+package com.ldtteam.armory.weaponry.common.config;
 
 import com.Orion.Armory.Weaponry.Util.References;
 import net.minecraftforge.common.config.Configuration;
