@@ -3,9 +3,13 @@ package com.ldtteam.armory.weaponry;
 import com.ldtteam.armory.weaponry.common.CommonProxy;
 import com.ldtteam.armory.weaponry.common.config.ConfigurationHandler;
 import com.ldtteam.armory.weaponry.util.References;
+import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import org.apache.logging.log4j.Logger;
+import slimeknights.tconstruct.library.TinkerRegistry;
+import slimeknights.tconstruct.library.materials.Material;
 
 /**
  * Created by Orion
@@ -26,10 +30,14 @@ public class Weaponry
     @SidedProxy(clientSide="com.Orion.Armory.Weaponry.Client.ClientProxy", serverSide="com.Orion.Armory.Weaponry.Common.CommonProxy")
     public static CommonProxy proxy;
 
+    public static Logger logger;
+
     @Mod.EventHandler
     public void preInit (FMLPreInitializationEvent event)
     {
-        ConfigurationHandler.init(event.getSuggestedConfigurationFile());
+        logger = event.getModLog();
         proxy.registerEventHandlers();
     }
+
+
 }

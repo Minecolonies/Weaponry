@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: deobf.slimeknights:TConstruct:1.12-2.8.1.515">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/minecraft/deobfedDeps/deobf/slimeknights/TConstruct/1.12-2.8.1.515/TConstruct-1.12-2.8.1.515.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/minecraft/deobfedDeps/deobf/slimeknights/TConstruct/1.12-2.8.1.515/TConstruct-1.12-2.8.1.515-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

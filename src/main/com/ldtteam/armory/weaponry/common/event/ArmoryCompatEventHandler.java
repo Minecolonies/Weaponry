@@ -1,28 +1,22 @@
 package com.ldtteam.armory.weaponry.common.event;
 
-import com.SmithsModding.Armory.API.Events.Common.ActivateArmorAddonEvent;
-import com.SmithsModding.Armory.API.Events.Common.ModifyMaterialEvent;
-import com.SmithsModding.Armory.API.Events.Common.RegisterMaterialsEvent;
-import com.SmithsModding.Armory.API.Materials.IArmorMaterial;
-import com.SmithsModding.Armory.Common.Material.ArmorMaterial;
-import com.SmithsModding.Armory.Common.Material.MaterialRegistry;
-import com.SmithsModding.Armory.Common.Registry.GeneralRegistry;
-import com.SmithsModding.Armory.Util.Client.TranslationKeys;
-import com.SmithsModding.Armory.Util.Core.ItemStackHelper;
-import com.Orion.Armory.Weaponry.Common.Compatibility.ArmoryMedieval;
-import com.Orion.Armory.Weaponry.Common.Config.WeaponryConfigs;
-import com.Orion.Armory.Weaponry.Util.Client.Colors;
-import com.Orion.Armory.Weaponry.Util.References;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumChatFormatting;
+import com.ldtteam.armory.weaponry.Weaponry;
+import com.smithsmodding.armory.api.IArmoryAPI;
+import com.smithsmodding.armory.api.common.helpers.IMaterialConstructionHelper;
+import com.smithsmodding.armory.api.common.material.armor.ICoreArmorMaterial;
+import com.smithsmodding.smithscore.util.common.helper.ItemStackHelper;
+import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.fluids.Fluid;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.oredict.OreDictionary;
-import tconstruct.library.TConstructRegistry;
-import tconstruct.library.crafting.CastingRecipe;
-import tconstruct.library.crafting.FluidType;
-import tconstruct.library.crafting.LiquidCasting;
-import tconstruct.tools.TinkerTools;
+import slimeknights.tconstruct.library.TinkerRegistry;
+import slimeknights.tconstruct.library.materials.Material;
+import slimeknights.tconstruct.library.smeltery.CastingRecipe;
+import slimeknights.tconstruct.library.smeltery.ICastingRecipe;
 
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Created by Orion
@@ -35,72 +29,81 @@ public class ArmoryCompatEventHandler
 {
 
     @SubscribeEvent
-    public void RegisterMaterialsHandler(RegisterMaterialsEvent pEvent)
+    public void RegisterCoreMaterialsHandler(final RegistryEvent.Register<ICoreArmorMaterial> event)
     {
-        ArmorMaterial tChain = new ArmorMaterial(References.InternalNames.Materials.Vanilla.CHAIN, TranslationKeys.Materials.VisibleNames.Steel, "Steel", EnumChatFormatting.GRAY, true, 1378, 0.25F, Colors.Metals.CHAIN, new ItemStack(TinkerTools.materials, 1, 16));
-        ArmorMaterial tAlumite = new ArmorMaterial(References.InternalNames.Materials.TinkersConstruct.ALUMITE, TranslationKeys.Materials.VisibleNames.Alumite, "Alumite", EnumChatFormatting.LIGHT_PURPLE, true, 1259, 0.2F, Colors.Metals.ALUMITE, new ItemStack(TinkerTools.materials, 1, 15));
-        ArmorMaterial tArdite = new ArmorMaterial(References.InternalNames.Materials.TinkersConstruct.ARDITE, TranslationKeys.Materials.VisibleNames.Ardite, "Ardite", EnumChatFormatting.DARK_RED, true, 2159, 0.4F, Colors.Metals.ARDITE, new ItemStack(TinkerTools.materials, 1, 4));
-        ArmorMaterial tCobalt = new ArmorMaterial(References.InternalNames.Materials.TinkersConstruct.COBALT, TranslationKeys.Materials.VisibleNames.Cobalt, "Cobalt", EnumChatFormatting.DARK_BLUE, true, 2056, 0.3F, Colors.Metals.COBALT, new ItemStack(TinkerTools.materials, 1, 3));
-        ArmorMaterial tManyullun = new ArmorMaterial(References.InternalNames.Materials.TinkersConstruct.MANYULLUN, TranslationKeys.Materials.VisibleNames.Manyullun, "Manyullyn", EnumChatFormatting.DARK_PURPLE, true, 4215, 0.489F, Colors.Metals.MANYULLUN, new ItemStack(TinkerTools.materials, 1, 5));
-        ArmorMaterial tBronze = new ArmorMaterial(References.InternalNames.Materials.Common.BRONZE, TranslationKeys.Materials.VisibleNames.Bronze, "Bronze", EnumChatFormatting.GOLD, true, 1193, 0.186F, Colors.Metals.BRONZE, new ItemStack(TinkerTools.materials, 1, 13));
+        IMaterialConstructionHelper helper = IArmoryAPI.Holder.getInstance().getHelpers().getMaterialConstructionHelper();
 
-        MaterialRegistry.getInstance().registerMaterial(tChain);
-        MaterialRegistry.getInstance().registerMaterial(tAlumite);
-        MaterialRegistry.getInstance().registerMaterial(tArdite);
-        MaterialRegistry.getInstance().registerMaterial(tCobalt);
-        MaterialRegistry.getInstance().registerMaterial(tManyullun);
-        MaterialRegistry.getInstance().registerMaterial(tBronze);
-
-        if (WeaponryConfigs.doAutomaticTinkersConstructGeneration)
-        {
-            checkTinkersConstructMetals();
-        }
+        checkTinkersConstructMetals(
+          metalName -> event.getRegistry().getValuesCollection().stream().anyMatch(material -> material.getOreDictionaryIdentifier().equalsIgnoreCase(metalName)),
+          metalName -> {
+              final Material tconMaterial = getMaterialForFluid()
+              final ICoreArmorMaterial material = helper.createMedievalCoreArmorMaterial(
+                tconMaterial.getLocalizedName(),
+                tconMaterial.getTextColor(),
+                metalName,
+              )
+          }
+        );
     }
 
-    private void checkTinkersConstructMetals() {
-        GeneralRegistry.iLogger.info("Started checking TiC Registry.");
+    private static Material getMaterialForFluid(final Fluid fluid) {
+        return TinkerRegistry.getAllMaterials().stream()
+                 .filter(mat -> fluid.equals(mat.getFluid()))
+                 .findFirst()
+                 .orElse(Material.UNKNOWN);
+    }
+
+    private void checkTinkersConstructMetals(final Predicate<String> oreNameCheck, final Consumer<String> metalNameRegistrar) {
+        Weaponry.logger.info("Started checking TiC Registry.");
         int tRecipesFound = 0;
-        LiquidCasting tCastingRegistry = TConstructRegistry.getTableCasting();
+        final List<ICastingRecipe> allTableCastingRecipes = TinkerRegistry.getAllTableCastingRecipes();
 
-        for(CastingRecipe tRecipe : tCastingRegistry.getCastingRecipes())
+        for(final ICastingRecipe recipeCandidate : allTableCastingRecipes)
         {
-            if (checkIfRegisterIsNeededForRecipe(tRecipe))
-                tRecipesFound ++;
+            if (recipeCandidate instanceof CastingRecipe)
+            {
+                final CastingRecipe recipe = (CastingRecipe) recipeCandidate;
+                if (checkIfRegisterIsNeededForRecipe(recipe, oreNameCheck, metalNameRegistrar))
+                    tRecipesFound ++;
+            }
+
+
         }
 
-        GeneralRegistry.iLogger.info("Finished searching TiC Registry. Found: " + tRecipesFound + " suitable candidates.");
+        Weaponry.logger.info("Finished searching TiC Registry. Found: " + tRecipesFound + " suitable candidates.");
     }
 
-    private boolean checkIfRegisterIsNeededForRecipe(CastingRecipe tRecipe)
+    private boolean checkIfRegisterIsNeededForRecipe(final CastingRecipe recipe, final Predicate<String> oreNameCheck, final Consumer<String> metalNameRegistrar)
     {
-        int[] tOreIDs = OreDictionary.getOreIDs(tRecipe.output);
+        final int[] recipeOutputOreIds = OreDictionary.getOreIDs(recipe.getResult());
 
         //Verify if metal was not already registered.
-        for (int tOreID : tOreIDs)
+        for (final int oreID : recipeOutputOreIds)
         {
-            String tOreName = OreDictionary.getOreName(tOreID);
+            final String oreName = OreDictionary.getOreName(oreID);
 
-            if (tOreName.contains("ingot"))
+            if (oreName.contains("ingot"))
             {
-                String tMetalName = tOreName.replace("ingot", "");
+                final String metalName = oreName.replace("ingot", "");
 
-                for(IArmorMaterial tMaterial : MaterialRegistry.getInstance().getArmorMaterials().values())
-                {
-                    if (tMaterial.getOreDicName().equals(tMetalName))
-                        return false;
-                }
+                if (!oreNameCheck.test(metalName))
+                    return false;
             }
         }
 
 
-        for (int tOreID : tOreIDs)
+        for (final int oreId : recipeOutputOreIds)
         {
-            if (OreDictionary.getOreName(tOreID).toLowerCase().contains("ingot"))
+            final String oreName = OreDictionary.getOreName(oreId).toLowerCase();
+            if (oreName.contains("ingot"))
             {
-                GeneralRegistry.iLogger.info("Found metal ingot in TiC LiquidCasting: " + OreDictionary.getOreName(tOreID) + " - For Itemstack: " + ItemStackHelper.toString(tRecipe.output) + " - Inserting it into Armory if possible!");
+                final String metalName = oreName.replace("ingot", "");
 
-                ArmorMaterial tAutoMatedMaterial = new ArmorMaterial(References.InternalNames.Materials.AUTOGENERATED + OreDictionary.getOreName(tOreID).replace("ingot", ""), OreDictionary.getOreName(tOreID).replace("ingot", ""), OreDictionary.getOreName(tOreID).replace("ingot", ""), true, FluidType.getFluidType(tRecipe.castingMetal.getFluid()).baseTemperature * 1.4F * 3.2F, (FluidType.getFluidType(tRecipe.castingMetal.getFluid()).baseTemperature * 1.4F * 3.2F)/ 8288F, tRecipe.output);
-                MaterialRegistry.getInstance().registerMaterial(tAutoMatedMaterial);
+                Weaponry.logger.info("Found metal ingot in TiC LiquidCasting: " + oreName + " - For Itemstack: " + ItemStackHelper.toString(recipe.getResult()) + " - Inserting it into Armory if possible!");
+                metalNameRegistrar.accept(metalName);
+
+                //ArmorMaterial tAutoMatedMaterial = new ArmorMaterial(References.InternalNames.Materials.AUTOGENERATED + OreDictionary.getOreName(tOreID).replace("ingot", ""), OreDictionary.getOreName(tOreID).replace("ingot", ""), OreDictionary.getOreName(tOreID).replace("ingot", ""), true, FluidType.getFluidType(tRecipe.castingMetal.getFluid()).baseTemperature * 1.4F * 3.2F, (FluidType.getFluidType(tRecipe.castingMetal.getFluid()).baseTemperature * 1.4F * 3.2F)/ 8288F, tRecipe.output);
+                //
 
                 return true;
             }
@@ -108,99 +111,4 @@ public class ArmoryCompatEventHandler
 
         return false;
     }
-
-    @SubscribeEvent
-    public void ActivateArmorAddonHandler(ActivateArmorAddonEvent pEvent)
-    {
-        if (!pEvent.iArmorMaterial.getType().equals(com.SmithsModding.Armory.Util.References.InternalNames.Tiers.MEDIEVAL))
-            return;
-
-        if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Helmet.TOP))
-        {
-            ArmoryMedieval.HandleTopHeadMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Helmet.RIGHT))
-        {
-            ArmoryMedieval.HandleRightSideHeadMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Helmet.LEFT))
-        {
-            ArmoryMedieval.HandleLeftSideHeadMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Chestplate.SHOULDERLEFT))
-        {
-            ArmoryMedieval.HandleLeftShoulderPadMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Chestplate.SHOULDERRIGHT))
-        {
-            ArmoryMedieval.HandleRightShouldPadMaterialsMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Chestplate.FRONTLEFT))
-        {
-            ArmoryMedieval.HandleLeftFrontChestplateMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Chestplate.FRONTRIGHT))
-        {
-            ArmoryMedieval.HandleRightFrontChestplateMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Chestplate.BACKLEFT))
-        {
-            ArmoryMedieval.HandleLeftBackChestplateMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Chestplate.BACKRIGHT))
-        {
-            ArmoryMedieval.HandleRightBackChestplateMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Leggings.FRONTLEFT))
-        {
-            ArmoryMedieval.HandleLeftFrontLeggingsMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Leggings.FRONTRIGHT))
-        {
-            ArmoryMedieval.HandleRightFrontLeggingsMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Leggings.BACKLEFT))
-        {
-            ArmoryMedieval.HandleLeftBackLeggingsMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Leggings.BACKRIGHT))
-        {
-            ArmoryMedieval.HandleRightBackLegginsMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Shoes.LEFT))
-        {
-            ArmoryMedieval.HandleLeftShoesMaterials(pEvent);
-        }
-        else if (!pEvent.iAddon.getAddonPositionID().equals(com.SmithsModding.Armory.Util.References.InternalNames.AddonPositions.Shoes.RIGHT))
-        {
-            ArmoryMedieval.HandleRightShoesMaterials(pEvent);
-        }
-    }
-
-    @SubscribeEvent
-    public void ModifyMaterialHandler(ModifyMaterialEvent pEvent)
-    {
-        if (pEvent.iArmor.getInternalName().equals(com.SmithsModding.Armory.Util.References.InternalNames.Armor.MEDIEVALHELMET))
-        {
-            ArmoryMedieval.ModifyMaterialForHelmet(pEvent);
-        }
-        else if (pEvent.iArmor.getInternalName().equals(com.SmithsModding.Armory.Util.References.InternalNames.Armor.MEDIEVALCHESTPLATE))
-        {
-            ArmoryMedieval.ModifyMaterialForChestplate(pEvent);
-        }
-        else if (pEvent.iArmor.getInternalName().equals(com.SmithsModding.Armory.Util.References.InternalNames.Armor.MEDIEVALLEGGINGS))
-        {
-            ArmoryMedieval.ModifyMaterialForLeggings(pEvent);
-        }
-        else if (pEvent.iArmor.getInternalName().equals(com.SmithsModding.Armory.Util.References.InternalNames.Armor.MEDIEVALSHOES))
-        {
-            ArmoryMedieval.ModifyMaterialForShoes(pEvent);
-        }
-        else
-        {
-            ArmoryMedieval.ModifyMaterialForOther(pEvent);
-        }
-    }
-
-
 }
