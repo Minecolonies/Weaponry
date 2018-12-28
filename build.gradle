@@ -156,7 +156,7 @@ curseforge {
                 displayName = "Armory - Weaponry: " + version
 
                 relations {
-                    requiredDependency 'armory' // SmithScore is required
+                    requiredDependency 'armory-armoring-the-world' // SmithScore is required
                 }
             }
 
