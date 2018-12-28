@@ -5,6 +5,7 @@ package com.ldtteam.armory.weaponry.common.config;
  */
 public class WeaponryConfigs
 {
-
     public static Boolean doAutomaticTinkersConstructGeneration = true;
+
+    public static Float meltingPointOffset = 6.5726f;
 }

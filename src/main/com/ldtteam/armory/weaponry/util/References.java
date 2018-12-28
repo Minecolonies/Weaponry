@@ -38,6 +38,7 @@ public class References {
 
         public class Config{
             public static final String doAutomaticTiCConversion = "AutomaticTiCConversion";
+            public static final String meltingPointOffset = "MeltingPointOffset";
         }
     }
 }

@@ -83,13 +83,24 @@ minecraft {
 
 dependencies {
     //Mod dependencies
-    deobfCompile('com.smithsmodding.armory:armory:1.12.2-0.1.+:api')
-    runtime('com.smithsmodding.armory:armory:1.12.2-0.1.+')
-
-    //deobfCompile group: 'com.smithsmodding.smithscore', name: 'smithscore', version: config.minecraft_version + "-" + config.smithscore_version
-    deobfCompile "mezz.jei:jei_" + config.minecraft_version + ":" + config.jei_version
-    deobfCompile "slimeknights.mantle:Mantle:" + config.slimeknights_mc_version + "-" + config.mantle_version
-    deobfCompile "slimeknights:TConstruct:"+ config.slimeknights_mc_version + "-" + config.tcon_version
+    deobfCompile('com.ldtteam:armory:1.12.2-' + config.armory_version + ':api'){
+        exclude group: 'mezz.jei'
+        exclude group: 'com.ldtteam'
+    }
+    
+    runtime('com.ldtteam:armory:1.12.2-' + config.armory_version) {
+        exclude group: 'mezz.jei'
+        exclude group: 'com.ldtteam'
+    }
+    
+    deobfCompile('com.ldtteam:smithscore:1.12.2-0.20.+')
+    
+    deobfCompile ("slimeknights.mantle:Mantle:" + config.slimeknights_mc_version + "-" + config.mantle_version) {
+        exclude group: 'mezz.jei'
+    }
+    deobfCompile ("slimeknights:TConstruct:"+ config.slimeknights_mc_version + "-" + config.tcon_version) {
+        exclude group: 'mezz.jei'
+    }
 
     compile 'org.jetbrains:annotations:15.0'
 }

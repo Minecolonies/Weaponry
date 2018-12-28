@@ -1,22 +1,37 @@
 package com.ldtteam.armory.weaponry.common.event;
 
 import com.ldtteam.armory.weaponry.Weaponry;
-import com.smithsmodding.armory.api.IArmoryAPI;
-import com.smithsmodding.armory.api.common.helpers.IMaterialConstructionHelper;
-import com.smithsmodding.armory.api.common.material.armor.ICoreArmorMaterial;
-import com.smithsmodding.smithscore.util.common.helper.ItemStackHelper;
+import com.ldtteam.armory.weaponry.common.config.WeaponryConfigs;
+import com.ldtteam.armory.weaponry.util.References;
+import com.ldtteam.armory.api.IArmoryAPI;
+import com.ldtteam.armory.api.common.capability.armor.IArmorAbsorptionRatioCapability;
+import com.ldtteam.armory.api.common.capability.armor.IArmorDefenceCapability;
+import com.ldtteam.armory.api.common.capability.armor.IArmorDurabilityCapability;
+import com.ldtteam.armory.api.common.capability.armor.IArmorToughnessCapability;
+import com.ldtteam.armory.api.common.helpers.IMaterialConstructionHelper;
+import com.ldtteam.armory.api.common.material.armor.IAddonArmorMaterial;
+import com.ldtteam.armory.api.common.material.armor.ICoreArmorMaterial;
+import com.ldtteam.armory.api.util.references.ModCapabilities;
+import com.ldtteam.smithscore.util.common.helper.ItemStackHelper;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.Tuple;
 import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.fluids.Fluid;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.oredict.OreDictionary;
+import net.minecraftforge.registries.IForgeRegistry;
+import org.jetbrains.annotations.NotNull;
 import slimeknights.tconstruct.library.TinkerRegistry;
+import slimeknights.tconstruct.library.events.TinkerRegisterEvent;
 import slimeknights.tconstruct.library.materials.Material;
-import slimeknights.tconstruct.library.smeltery.CastingRecipe;
-import slimeknights.tconstruct.library.smeltery.ICastingRecipe;
 
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.ldtteam.armory.api.util.references.ModData.Materials.Iron.*;
+
 
 /**
  * Created by Orion
@@ -25,90 +40,134 @@ import java.util.function.Predicate;
  * <p/>
  * Copyrighted according to Project specific license
  */
+
+@Mod.EventBusSubscriber(modid = References.General.MOD_ID)
 public class ArmoryCompatEventHandler
 {
 
-    @SubscribeEvent
-    public void RegisterCoreMaterialsHandler(final RegistryEvent.Register<ICoreArmorMaterial> event)
+    private static final double LOG9_2 = 0.31546487678;
+
+    @SubscribeEvent(priority = EventPriority.LOW)
+    public static void RegisterCoreMaterials(@NotNull final RegistryEvent.Register<ICoreArmorMaterial> coreArmorMaterialRegister)
     {
-        IMaterialConstructionHelper helper = IArmoryAPI.Holder.getInstance().getHelpers().getMaterialConstructionHelper();
-
-        checkTinkersConstructMetals(
-          metalName -> event.getRegistry().getValuesCollection().stream().anyMatch(material -> material.getOreDictionaryIdentifier().equalsIgnoreCase(metalName)),
-          metalName -> {
-              final Material tconMaterial = getMaterialForFluid()
-              final ICoreArmorMaterial material = helper.createMedievalCoreArmorMaterial(
-                tconMaterial.getLocalizedName(),
-                tconMaterial.getTextColor(),
-                metalName,
-              )
-          }
-        );
+        final long addedMaterialCount = TinkerRegistry.getAllMaterials()
+          .stream()
+          .map(tuple -> checkIfRegisterIsNeededForRecipeCore(tuple, coreArmorMaterialRegister.getRegistry()))
+          .filter(Boolean::booleanValue)
+          .count();
+        
+        Weaponry.logger.info(String.format("Added: %d materials to Armories core material registry.", addedMaterialCount));
     }
 
-    private static Material getMaterialForFluid(final Fluid fluid) {
-        return TinkerRegistry.getAllMaterials().stream()
-                 .filter(mat -> fluid.equals(mat.getFluid()))
-                 .findFirst()
-                 .orElse(Material.UNKNOWN);
-    }
-
-    private void checkTinkersConstructMetals(final Predicate<String> oreNameCheck, final Consumer<String> metalNameRegistrar) {
-        Weaponry.logger.info("Started checking TiC Registry.");
-        int tRecipesFound = 0;
-        final List<ICastingRecipe> allTableCastingRecipes = TinkerRegistry.getAllTableCastingRecipes();
-
-        for(final ICastingRecipe recipeCandidate : allTableCastingRecipes)
-        {
-            if (recipeCandidate instanceof CastingRecipe)
-            {
-                final CastingRecipe recipe = (CastingRecipe) recipeCandidate;
-                if (checkIfRegisterIsNeededForRecipe(recipe, oreNameCheck, metalNameRegistrar))
-                    tRecipesFound ++;
-            }
-
-
-        }
-
-        Weaponry.logger.info("Finished searching TiC Registry. Found: " + tRecipesFound + " suitable candidates.");
-    }
-
-    private boolean checkIfRegisterIsNeededForRecipe(final CastingRecipe recipe, final Predicate<String> oreNameCheck, final Consumer<String> metalNameRegistrar)
+    @SubscribeEvent(priority = EventPriority.LOW)
+    public static void RegisterAddonMaterials(@NotNull final RegistryEvent.Register<IAddonArmorMaterial> addonArmorMaterialRegister)
     {
-        final int[] recipeOutputOreIds = OreDictionary.getOreIDs(recipe.getResult());
+        final long addedMaterialCount = TinkerRegistry.getAllMaterials()
+                                          .stream()
+                                          .map(tuple -> checkIfRegisterIsNeededForRecipeAddon(tuple, addonArmorMaterialRegister.getRegistry()))
+                                          .filter(Boolean::booleanValue)
+                                          .count();
 
-        //Verify if metal was not already registered.
-        for (final int oreID : recipeOutputOreIds)
+        Weaponry.logger.info(String.format("Added: %d materials to Armories addon material registry.", addedMaterialCount));
+    }
+
+    //Copy of the melting temp calculator of TCon.
+    private static int calcTemperature(int temp) {
+        int base = Material.VALUE_Block;
+        int max_tmp = Math.max(0, temp - 300); // we use 0 as baseline, not 300
+        double f = (double) 144 / (double) base;
+
+        // we calculate 2^log9(f), which effectively gives us 2^(1 for each multiple of 9)
+        // so 1 = 1, 9 = 2, 81 = 4, 1/9 = 1/2, 1/81 = 1/4 etc
+        // we simplify it to f^log9(2) to make calculation simpler
+        f = Math.pow(f, LOG9_2);
+
+        return 300 + (int) (f * (double) max_tmp);
+    }
+    
+    private static boolean checkIfRegisterIsNeededForRecipeCore(@NotNull final Material tconMaterial, @NotNull final IForgeRegistry<ICoreArmorMaterial> coreMaterialRegistry)
+    {
+        final IMaterialConstructionHelper helper = IArmoryAPI.Holder.getInstance().getHelpers().getMaterialConstructionHelper();
+
+        if (coreMaterialRegistry.getValuesCollection().stream().anyMatch(material -> material.getOreDictionaryIdentifier().equalsIgnoreCase(tconMaterial.identifier)))
         {
-            final String oreName = OreDictionary.getOreName(oreID);
-
-            if (oreName.contains("ingot"))
-            {
-                final String metalName = oreName.replace("ingot", "");
-
-                if (!oreNameCheck.test(metalName))
-                    return false;
-            }
+            return false;
         }
 
-
-        for (final int oreId : recipeOutputOreIds)
+        if (tconMaterial.getFluid() == null)
         {
-            final String oreName = OreDictionary.getOreName(oreId).toLowerCase();
-            if (oreName.contains("ingot"))
-            {
-                final String metalName = oreName.replace("ingot", "");
-
-                Weaponry.logger.info("Found metal ingot in TiC LiquidCasting: " + oreName + " - For Itemstack: " + ItemStackHelper.toString(recipe.getResult()) + " - Inserting it into Armory if possible!");
-                metalNameRegistrar.accept(metalName);
-
-                //ArmorMaterial tAutoMatedMaterial = new ArmorMaterial(References.InternalNames.Materials.AUTOGENERATED + OreDictionary.getOreName(tOreID).replace("ingot", ""), OreDictionary.getOreName(tOreID).replace("ingot", ""), OreDictionary.getOreName(tOreID).replace("ingot", ""), true, FluidType.getFluidType(tRecipe.castingMetal.getFluid()).baseTemperature * 1.4F * 3.2F, (FluidType.getFluidType(tRecipe.castingMetal.getFluid()).baseTemperature * 1.4F * 3.2F)/ 8288F, tRecipe.output);
-                //
-
-                return true;
-            }
+            return false;
         }
 
-        return false;
+        Weaponry.logger.info(String.format("Found metal ingot in TiC LiquidCasting: %s - Inserting it into Armory core material registry if possible!",
+          tconMaterial.identifier));
+    
+        final float meltingPoint = Math.round(WeaponryConfigs.meltingPointOffset * (calcTemperature(tconMaterial.getFluid().getTemperature()) - 300));
+        final float relevantToIronCoefficient = IRON_MELTINGPOINT / meltingPoint;
+
+        final ICoreArmorMaterial material = helper.createMedievalCoreArmorMaterial(
+          tconMaterial.getLocalizedName(),
+          tconMaterial.getTextColor(),
+          tconMaterial.identifier,
+          meltingPoint,
+          IRON_VAPORIZINGPOINT * relevantToIronCoefficient,
+          (int) (IRON_MELTINGTIME * relevantToIronCoefficient),
+          (int) (IRON_VAPORIZINGTIME * relevantToIronCoefficient),
+          IRON_HEATCOEFFICIENT * relevantToIronCoefficient,
+          builder ->
+            builder
+              .register(ModCapabilities.MOD_ARMOR_DURABILITY_CAPABILITY, IArmorDurabilityCapability.multiply(relevantToIronCoefficient))
+              .register(ModCapabilities.MOD_ARMOR_ABSORPTION_RATIO_CAPABILITY, IArmorAbsorptionRatioCapability.multiply(relevantToIronCoefficient))
+              .register(ModCapabilities.MOD_ARMOR_DEFENCE_CAPABILITY, IArmorDefenceCapability.multiply(relevantToIronCoefficient))
+              .register(ModCapabilities.MOD_ARMOR_THOUGHNESS_CAPABILITY, IArmorToughnessCapability.multiply(relevantToIronCoefficient))
+        ).setRegistryName(new ResourceLocation(References.General.MOD_ID, "tcon-core-" + tconMaterial.getIdentifier()));
+
+        coreMaterialRegistry.register(material);
+
+        return true;
+    }
+
+    private static boolean checkIfRegisterIsNeededForRecipeAddon(@NotNull final Material tconMaterial, @NotNull final IForgeRegistry<IAddonArmorMaterial> addonMaterialRegistry)
+    {
+
+        final IMaterialConstructionHelper helper = IArmoryAPI.Holder.getInstance().getHelpers().getMaterialConstructionHelper();
+
+        if (addonMaterialRegistry.getValuesCollection().stream().anyMatch(material -> material.getOreDictionaryIdentifier().equalsIgnoreCase(tconMaterial.identifier)))
+        {
+            return false;
+        }
+
+        if (tconMaterial.getFluid() == null)
+        {
+            return false;
+        }
+
+        Weaponry.logger.info(String.format("Found metal ingot in TiC LiquidCasting: %s - Inserting it into Armory addon material registry if possible!",
+          tconMaterial.identifier));
+
+        final float meltingPoint = WeaponryConfigs.meltingPointOffset * calcTemperature(tconMaterial.getFluid().getTemperature());
+        final float relevantToIronCoefficient = IRON_MELTINGPOINT / meltingPoint;
+
+        final IAddonArmorMaterial material = helper.createMedievalAddonArmorMaterial(
+          tconMaterial.getLocalizedName(),
+          tconMaterial.getTextColor(),
+          tconMaterial.identifier,
+          meltingPoint,
+          IRON_VAPORIZINGPOINT * relevantToIronCoefficient,
+          (int) (IRON_MELTINGTIME * relevantToIronCoefficient),
+          (int) (IRON_VAPORIZINGTIME * relevantToIronCoefficient),
+          IRON_HEATCOEFFICIENT * relevantToIronCoefficient,
+          builder ->
+            builder
+              .register(ModCapabilities.MOD_ARMOR_DURABILITY_CAPABILITY, IArmorDurabilityCapability.multiply(relevantToIronCoefficient))
+              .register(ModCapabilities.MOD_ARMOR_ABSORPTION_RATIO_CAPABILITY, IArmorAbsorptionRatioCapability.multiply(relevantToIronCoefficient))
+              .register(ModCapabilities.MOD_ARMOR_DEFENCE_CAPABILITY, IArmorDefenceCapability.multiply(relevantToIronCoefficient))
+              .register(ModCapabilities.MOD_ARMOR_THOUGHNESS_CAPABILITY, IArmorToughnessCapability.multiply(relevantToIronCoefficient))
+        ).setRegistryName(new ResourceLocation(References.General.MOD_ID, "tcon-addon-" + tconMaterial.getIdentifier()));
+
+        addonMaterialRegistry.register(material);
+
+        return true;
     }
 }
+
