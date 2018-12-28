@@ -156,7 +156,8 @@ curseforge {
                 displayName = "Armory - Weaponry: " + version
 
                 relations {
-                    requiredDependency 'armory-armoring-the-world' // SmithScore is required
+                    requiredDependency 'armory-armoring-the-world' // Armory
+                    requiredDependency 'tinkers-construct' //Tcon
                 }
             }
 
